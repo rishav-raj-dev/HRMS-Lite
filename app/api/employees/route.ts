@@ -48,6 +48,12 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+    if (salary < 0){
+      return NextResponse.json(
+        {error: "Salary can't be negative"},
+        {status: 400}
+      )
+    }
 
     const result = await query(
       `INSERT INTO employees (name, email, position, department, hire_date, salary)

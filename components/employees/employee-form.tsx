@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { toast } from 'sonner';
+import { XCircle } from 'lucide-react';
 
 interface EmployeeFormProps {
   onSuccess: () => void;
@@ -13,6 +13,7 @@ interface EmployeeFormProps {
 
 export function EmployeeForm({ onSuccess, onCancel }: EmployeeFormProps) {
   const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<String>('');
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -25,8 +26,8 @@ export function EmployeeForm({ onSuccess, onCancel }: EmployeeFormProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.salary || isNaN(parseFloat(formData.salary))) {
-      toast.error('Please enter a valid salary');
+    if (!formData.salary || isNaN(parseFloat(formData.salary)) || Number(formData.salary) < 0) {
+      setErrorMessage('Please enter a valid salary');
       return;
     }
 
@@ -40,6 +41,7 @@ export function EmployeeForm({ onSuccess, onCancel }: EmployeeFormProps) {
           salary: parseFloat(formData.salary),
         }),
       });
+      const data = await response.json();
 
       if (response.ok) {
         onSuccess();
@@ -52,13 +54,13 @@ export function EmployeeForm({ onSuccess, onCancel }: EmployeeFormProps) {
           salary: '',
         });
       } else if (response.status === 409) {
-        toast.error('Email already exists');
+        setErrorMessage(data.error);
       } else {
-        toast.error('Failed to add employee');
+        setErrorMessage(data.error);
       }
     } catch (error) {
       console.error('Error adding employee:', error);
-      toast.error('Failed to add employee');
+      setErrorMessage('Failed to add employee');
     } finally {
       setLoading(false);
     }
@@ -167,6 +169,19 @@ export function EmployeeForm({ onSuccess, onCancel }: EmployeeFormProps) {
       </div>
     </div>
   </div>
+
+  {errorMessage.length>0 && (
+    <div className="flex items-center justify-between p-4 bg-red-50 border border-red-200 rounded-lg">
+      <p className="text-sm text-red-800">{errorMessage}</p>
+      <button
+        onClick={() => setErrorMessage('')}
+        className="ml-4 text-red-400 hover:text-red-600 transition-colors shrink-0"
+        aria-label="Dismiss error"
+      >
+        <XCircle className="h-4 w-4" />
+      </button>
+    </div>
+  )}
 
   {/* Actions */}
   <div className="flex gap-2 justify-end pt-2 border-t border-border">

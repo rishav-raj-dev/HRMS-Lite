@@ -7,7 +7,9 @@ export async function GET(request: NextRequest) {
     const date = searchParams.get('date');
     const fromDate = searchParams.get('fromDate');
     const toDate = searchParams.get('toDate');
-    const search = searchParams.get('search'); // 👈 was missing, employeeId removed
+    const search = searchParams.get('search');
+    const limit = parseInt(searchParams.get('limit') || '10');
+    const offset = parseInt(searchParams.get('offset') || '0');
 
     // Used by AttendanceForm to pre-populate existing records
     if (date) {
@@ -18,38 +20,50 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ attendance: result.rows });
     }
 
-    // Used by AttendanceList with filters
-    let sql = `
-      SELECT a.id, a.employee_id, e.name, e.position, a.date, a.status, a.remarks
-      FROM attendance a
-      JOIN employees e ON a.employee_id = e.id
-      WHERE 1=1
-    `;
-    const params: any[] = [];
+    // Build filter params separately
+    let whereSql = `WHERE 1=1`;
+    const filterParams: any[] = [];
 
     if (search) {
-      params.push(`%${search}%`);
-      sql += ` AND e.name ILIKE $${params.length}`;
+      filterParams.push(`%${search}%`);
+      whereSql += ` AND e.name ILIKE $${filterParams.length}`;
     }
     if (fromDate) {
-      params.push(fromDate);
-      sql += ` AND a.date >= $${params.length}`;
+      filterParams.push(fromDate);
+      whereSql += ` AND a.date >= $${filterParams.length}`;
     }
     if (toDate) {
-      params.push(toDate);
-      sql += ` AND a.date <= $${params.length}`;
+      filterParams.push(toDate);
+      whereSql += ` AND a.date <= $${filterParams.length}`;
     }
 
-    sql += ` ORDER BY a.date DESC, e.name ASC`;
+    // COUNT uses only filter params
+    const countResult = await query(
+      `SELECT COUNT(*) FROM attendance a JOIN employees e ON a.employee_id = e.id ${whereSql}`,
+      filterParams
+    );
+    const total = parseInt(countResult.rows[0].count);
 
-    const result = await query(sql, params);
-    return NextResponse.json({ attendance: result.rows });
+    // Pagination gets its own copy
+    const limitIndex = filterParams.length + 1;
+    const offsetIndex = filterParams.length + 2;
+    const paginationParams = [...filterParams, limit, offset];
+    const result = await query(
+      `SELECT a.id, a.employee_id, e.name, e.position, a.date, a.status, a.remarks
+      FROM attendance a
+      JOIN employees e ON a.employee_id = e.id
+      ${whereSql}
+      ORDER BY a.date DESC, e.name ASC
+      LIMIT $${limitIndex} OFFSET $${offsetIndex}`,
+      paginationParams
+    );
+
+    return NextResponse.json({ attendance: result.rows, total });
   } catch (error) {
     console.error('Error fetching attendance:', error);
     return NextResponse.json({ error: 'Failed to fetch attendance' }, { status: 500 });
   }
 }
-
 
 export async function POST(request: NextRequest) {
   try {

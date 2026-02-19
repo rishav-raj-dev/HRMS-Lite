@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -19,14 +19,12 @@ interface AttendanceRecord {
   remarks?: string;
 }
 
-interface Employee {
-  id: number;
-  name: string;
-}
+const LIMIT = 10;
 
 export function AttendanceList() {
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
-  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [total, setTotal] = useState(0);
+  const [offset, setOffset] = useState(0);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -37,66 +35,68 @@ export function AttendanceList() {
     toDate: today,
   });
 
-  const fetchAttendance = async () => {
+  const filtersRef = useRef(filters);
+  const offsetRef = useRef(offset);
+  useEffect(() => { filtersRef.current = filters; }, [filters]);
+  useEffect(() => { offsetRef.current = offset; }, [offset]);
+
+  const fetchAttendance = useCallback(async (currentFilters: typeof filters, currentOffset: number) => {
     try {
       setLoading(true);
       setError(null);
       const params = new URLSearchParams();
-      if (filters.search) params.append('search', filters.search);
-      if (filters.fromDate) params.append('fromDate', filters.fromDate);
-      if (filters.toDate) params.append('toDate', filters.toDate);
+      if (currentFilters.search) params.append('search', currentFilters.search);
+      if (currentFilters.fromDate) params.append('fromDate', currentFilters.fromDate);
+      if (currentFilters.toDate) params.append('toDate', currentFilters.toDate);
+      params.append('limit', String(LIMIT));
+      params.append('offset', String(currentOffset));
 
       const response = await fetch(`/api/attendance?${params}`);
       const data = await response.json();
       setAttendance(data.attendance || []);
-    } catch (error) {
-      console.error('Error fetching attendance:', error);
+      setTotal(data.total || 0);
+    } catch (err) {
+      console.error('Error fetching attendance:', err);
       setError('Failed to fetch attendance records. Please check your database connection.');
       setAttendance([]);
+      setTotal(0);
     } finally {
       setLoading(false);
     }
-  };
-
-  const fetchEmployees = async () => {
-    try {
-      const response = await fetch('/api/employees');
-      const data = await response.json();
-      setEmployees(data.employees || []);
-    } catch (error) {
-      console.error('Error fetching employees:', error);
-    }
-  };
-
-  useEffect(() => {
-    fetchEmployees();
   }, []);
 
   useEffect(() => {
-    fetchAttendance();
-  }, [filters]);
+    fetchAttendance(filters, offset);
+  }, [filters, offset]);
+
+  const handleFilterChange = (newFilters: typeof filters) => {
+    setOffset(0);
+    setFilters(newFilters);
+  };
+
+  const handlePageChange = (newOffset: number) => {
+    setOffset(newOffset);
+  };
 
   const handleDelete = async (id: number) => {
     if (!confirm('Are you sure you want to delete this record?')) return;
-
     try {
       const response = await fetch(`/api/attendance/${id}`, { method: 'DELETE' });
       if (response.ok) {
-        setAttendance(attendance.filter(a => a.id !== id));
         toast.success('Record deleted successfully');
+        fetchAttendance(filtersRef.current, offsetRef.current);
       } else {
         toast.error('Failed to delete record');
       }
-    } catch (error) {
-      console.error('Error deleting record:', error);
+    } catch (err) {
+      console.error('Error deleting record:', err);
       toast.error('Failed to delete record');
     }
   };
 
   const handleAttendanceAdded = () => {
     setShowForm(false);
-    fetchAttendance();
-    toast.success('Attendance marked successfully');
+    fetchAttendance(filtersRef.current, offsetRef.current);
   };
 
   const getStatusIcon = (status: string) => {
@@ -122,6 +122,9 @@ export function AttendanceList() {
     );
   };
 
+  const totalPages = Math.ceil(total / LIMIT);
+  const currentPage = Math.floor(offset / LIMIT) + 1;
+
   return (
     <div className="space-y-6">
 
@@ -137,15 +140,13 @@ export function AttendanceList() {
       {error && (
         <Card className="p-4 bg-red-50 border-red-200">
           <p className="text-sm text-red-800">{error}</p>
-          {/* <p className="text-xs text-red-600 mt-2">Please ensure the database is initialized. Visit /setup to initialize.</p> */}
         </Card>
       )}
 
-      {/* Form */}
+      {/* Form — no employees prop needed anymore */}
       {showForm && (
         <Card className="p-6 border-primary/20 bg-primary/5">
           <AttendanceForm
-            employees={employees}
             onSuccess={handleAttendanceAdded}
             onCancel={() => setShowForm(false)}
           />
@@ -162,7 +163,7 @@ export function AttendanceList() {
               id="search"
               placeholder="Search by name..."
               value={filters.search}
-              onChange={(e) => setFilters({ ...filters, search: e.target.value })}
+              onChange={(e) => handleFilterChange({ ...filters, search: e.target.value })}
               className="focus-visible:ring-1 focus-visible:ring-primary"
             />
           </div>
@@ -172,7 +173,7 @@ export function AttendanceList() {
               id="fromDate"
               type="date"
               value={filters.fromDate}
-              onChange={(e) => setFilters({ ...filters, fromDate: e.target.value })}
+              onChange={(e) => handleFilterChange({ ...filters, fromDate: e.target.value })}
               className="focus-visible:ring-1 focus-visible:ring-primary"
             />
           </div>
@@ -182,7 +183,7 @@ export function AttendanceList() {
               id="toDate"
               type="date"
               value={filters.toDate}
-              onChange={(e) => setFilters({ ...filters, toDate: e.target.value })}
+              onChange={(e) => handleFilterChange({ ...filters, toDate: e.target.value })}
               className="focus-visible:ring-1 focus-visible:ring-primary"
             />
           </div>
@@ -250,6 +251,33 @@ export function AttendanceList() {
               </tbody>
             </table>
           </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between px-4 py-3 border-t border-border bg-muted/20">
+              <span className="text-sm text-muted-foreground">
+                Page {currentPage} of {totalPages} · {total} records
+              </span>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={offset === 0}
+                  onClick={() => handlePageChange(offset - LIMIT)}
+                >
+                  Previous
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={offset + LIMIT >= total}
+                  onClick={() => handlePageChange(offset + LIMIT)}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          )}
         </Card>
       )}
     </div>

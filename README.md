@@ -1,216 +1,101 @@
-# HRMS Lite - Human Resource Management System
+# HRMS Lite — HR Management System
 
-A modern, full-stack HR management system built with Next.js 16, React 19, and PostgreSQL. Manage employees and track attendance with ease.
+A lightweight Human Resource Management System for tracking employees and attendance, built with Next.js and PostgreSQL (Neon).
 
-## Features
+---
 
-- **Employee Management**
-  - Add, view, and delete employees
-  - Track employee details (name, email, position, department, hire date, salary)
-  - Real-time employee list updates
+## Project Overview
 
-- **Attendance Management**
-  - Mark attendance (Present, Absent, Leave)
-  - Filter attendance by employee and date range
-  - Add remarks to attendance records
-  - Prevent duplicate attendance entries
+HRMS Lite provides a simple, clean interface to manage your workforce day-to-day. It includes:
 
-- **Dashboard**
-  - Real-time statistics
-  - Total employees count
-  - Today's attendance summary (Present, Absent, Leave)
-  - Attendance rate calculation
+- **Dashboard** — At-a-glance stats for total employees, present/absent/on-leave counts today, and attendance rate
+- **Employee Management** — Add, search, paginate, and delete employee records
+- **Attendance Tracking** — Mark and filter attendance by employee name and date range, with support for Present, Absent, and Leave statuses
+
+---
 
 ## Tech Stack
 
-### Frontend
-- **Next.js 16** - React framework with App Router
-- **React 19.2** - Latest React with built-in optimizations
-- **shadcn/ui** - High-quality UI components
-- **Tailwind CSS** - Utility-first CSS framework
-- **Lucide React** - Beautiful icons
-- **Sonner** - Toast notifications
+| Layer | Technology |
+|---|---|
+| Framework | [Next.js](https://nextjs.org/) (App Router) |
+| Language | TypeScript |
+| Database | PostgreSQL via [Neon Serverless](https://neon.tech/) |
+| UI Components | shadcn/ui |
+| Styling | Tailwind CSS |
+| Icons | Lucide React |
 
-### Backend
-- **Next.js API Routes** - Serverless functions
-- **@neondatabase/serverless** - PostgreSQL client for serverless
-- **TypeScript** - Type safety
+---
 
-### Database
-- **Neon PostgreSQL** - Serverless PostgreSQL with auto-scaling
-
-## Getting Started
+## Running the Project Locally
 
 ### Prerequisites
-- Node.js 18+ or pnpm
-- Neon account (free tier available)
-- Vercel account (optional, for deployment)
 
-### Installation
+- Node.js 18+
+- A [Neon](https://neon.tech/) account (free tier works fine) or any PostgreSQL database
 
-1. Clone or download the project
-2. Install dependencies:
+### 1. Clone the repository
+
 ```bash
-pnpm install
+git clone <your-repo-url>
+cd hrms-lite
 ```
 
-3. Set up environment variables:
+### 2. Install dependencies
+
 ```bash
-cp .env.example .env.local
-# Edit .env.local and add your Neon DATABASE_URL
+npm install
 ```
 
-4. Run database migration:
+### 3. Set up environment variables
+
+Create a `.env.local` file in the root of the project:
+
+```env
+DATABASE_URL=your_neon_postgres_connection_string
+```
+
+You can find your connection string in the Neon dashboard under **Connection Details**.
+
+### 4. Initialize the database
+
+Start the dev server first, then hit the setup endpoint once to create the required tables:
+
 ```bash
-pnpm migrate
+npm run dev
 ```
 
-5. Start the development server:
+Then in a separate terminal (or your browser):
+
 ```bash
-pnpm dev
+curl -X POST http://localhost:3000/api/setup
 ```
 
-6. Open [http://localhost:3000](http://localhost:3000) in your browser
+Or navigate to `/setup` in the browser if a setup page is present. This creates the `employees` and `attendance` tables along with necessary indexes.
 
-## Project Structure
+### 5. Open the app
 
-```
-├── app/
-│   ├── api/
-│   │   ├── employees/        # Employee API routes
-│   │   └── attendance/       # Attendance API routes
-│   ├── layout.tsx           # Root layout
-│   ├── page.tsx             # Main application page
-│   └── globals.css          # Global styles
-├── components/
-│   ├── dashboard/           # Dashboard components
-│   ├── employees/           # Employee management components
-│   ├── attendance/          # Attendance management components
-│   └── ui/                  # shadcn/ui components
-├── lib/
-│   ├── db.ts               # Database connection
-│   └── utils.ts            # Utility functions
-├── scripts/
-│   ├── init-db.sql         # Database schema
-│   └── migrate.js          # Migration runner
-└── public/                  # Static assets
+```bash
+http://localhost:3000
 ```
 
-## API Endpoints
+---
 
-### Employees
-- `GET /api/employees` - List all employees
-- `POST /api/employees` - Create new employee
-- `DELETE /api/employees/[id]` - Delete employee
+## API Routes
 
-### Attendance
-- `GET /api/attendance?employeeId=&fromDate=&toDate=` - List attendance records
-- `POST /api/attendance` - Mark attendance
-- `PATCH /api/attendance/[id]` - Update attendance record
-- `DELETE /api/attendance/[id]` - Delete attendance record
+| Method | Endpoint | Description |
+|---|---|---|
+| GET/POST | `/api/employees` | List or create employees |
+| DELETE | `/api/employees/[id]` | Delete an employee |
+| GET/POST | `/api/attendance` | List or mark attendance |
+| PATCH/DELETE | `/api/attendance/[id]` | Update or delete an attendance record |
+| GET/POST | `/api/setup` | Check or initialize the database |
 
-## Database Schema
+---
 
-### employees
-```sql
-CREATE TABLE employees (
-  id SERIAL PRIMARY KEY,
-  name VARCHAR(255) NOT NULL,
-  email VARCHAR(255) NOT NULL UNIQUE,
-  position VARCHAR(100) NOT NULL,
-  department VARCHAR(100) NOT NULL,
-  hire_date DATE NOT NULL,
-  salary DECIMAL(10, 2) NOT NULL,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-```
+## Assumptions & Limitations
 
-### attendance
-```sql
-CREATE TABLE attendance (
-  id SERIAL PRIMARY KEY,
-  employee_id INTEGER NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
-  date DATE NOT NULL,
-  status VARCHAR(50) NOT NULL,
-  remarks TEXT,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE(employee_id, date)
-);
-```
-
-## Deployment
-
-### Deploy to Vercel
-
-1. Push your code to GitHub
-2. Import your repository in Vercel
-3. Add environment variable: `DATABASE_URL`
-4. Click Deploy
-
-See [DEPLOYMENT.md](./DEPLOYMENT.md) for detailed instructions.
-
-## Features Walkthrough
-
-### Dashboard
-- View total employee count
-- See today's attendance summary
-- Check attendance rate percentage
-
-### Employees Page
-- View all employees in a clean list
-- Add new employees with all required details
-- Delete employees (with confirmation)
-- Real-time list updates
-
-### Attendance Page
-- Mark attendance for employees
-- Filter by employee, date range
-- View attendance history with status indicators
-- Update attendance records
-- Delete records if needed
-
-## Sample Data
-
-The database migration includes sample data with 5 employees and their attendance records for testing purposes.
-
-## Performance
-
-The app is optimized for performance:
-- Serverless backend scales automatically
-- PostgreSQL queries are optimized with indexes
-- Frontend uses React 19's built-in optimizations
-- CDN-ready deployment on Vercel
-
-## Browser Support
-
-- Chrome/Edge (latest)
-- Firefox (latest)
-- Safari (latest)
-
-## Contributing
-
-Feel free to fork and submit pull requests for improvements.
-
-## License
-
-MIT License - feel free to use this project for personal or commercial use.
-
-## Support
-
-For issues or questions:
-1. Check the [DEPLOYMENT.md](./DEPLOYMENT.md) guide
-2. Review the database schema
-3. Check browser console for errors
-4. Review Vercel logs if deployed
-
-## Future Enhancements
-
-- User authentication and role-based access
-- Leave management system
-- Payroll integration
-- Report generation (PDF exports)
-- Email notifications
-- Bulk attendance import
-- Advanced analytics and reporting
+- **Single organization** — There is no multi-tenancy or user authentication. Anyone with access to the URL can view and modify all data.
+- **One record per employee per day** — The database enforces a unique constraint on `(employee_id, date)`, so attendance can only be marked once per employee per day. Re-marking is silently ignored.
+- **Attendance update via API only** — The `PATCH /api/attendance/[id]` endpoint exists but there is no edit UI; deletion is the only action available in the interface.
+- **No role-based access control** — All operations are open; suitable for small internal teams.

@@ -1,0 +1,18 @@
+{
+  "buildCommand": "next build",
+  "env": {
+    "DATABASE_URL": "@database_url"
+  },
+  "git": {
+    "deploymentEnabled": {
+      "main": true
+    }
+  },
+  "regions": ["iad1"],
+  "functions": {
+    "app/api/**": {
+      "memory": 1024,
+      "maxDuration": 60
+    }
+  }
+}

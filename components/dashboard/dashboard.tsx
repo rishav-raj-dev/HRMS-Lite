@@ -26,42 +26,36 @@ export function Dashboard() {
       try {
         setLoading(true);
         setError(null);
-        
-        // Fetch all employees
-        const empResponse = await fetch('/api/employees');
-        const empData = await empResponse.json();
-        
+
+        const today = new Date().toISOString().split('T')[0];
+
+        // Fetch in parallel:
+        // - employees with limit=1 just to get the total count
+        // - today's attendance with a high limit to get all records
+        const [empResponse, attResponse] = await Promise.all([
+          fetch('/api/employees?limit=1&offset=0'),
+          fetch(`/api/attendance?fromDate=${today}&toDate=${today}&limit=1000&offset=0`),
+        ]);
+
         if (!empResponse.ok) {
-          // setError('Unable to load dashboard data. Please initialize the database.');
-          setStats({
-            totalEmployees: 0,
-            presentToday: 0,
-            absentToday: 0,
-            leaveToday: 0,
-          });
+          setStats({ totalEmployees: 0, presentToday: 0, absentToday: 0, leaveToday: 0 });
           return;
         }
 
-        const totalEmployees = empData.employees?.length || 0;
-
-        // Fetch today's attendance
-        const today = new Date().toISOString().split('T')[0];
-        const attResponse = await fetch(`/api/attendance?fromDate=${today}&toDate=${today}`);
+        const empData = await empResponse.json();
         const attData = await attResponse.json();
+
+        // Use total from API — not employees.length which is page-limited
+        const totalEmployees = empData.total || 0;
 
         const attendance = attData.attendance || [];
         const presentToday = attendance.filter((a: any) => a.status === 'Present').length;
-        const absentToday = attendance.filter((a: any) => a.status === 'Absent').length;
-        const leaveToday = attendance.filter((a: any) => a.status === 'Leave').length;
+        const absentToday  = attendance.filter((a: any) => a.status === 'Absent').length;
+        const leaveToday   = attendance.filter((a: any) => a.status === 'Leave').length;
 
-        setStats({
-          totalEmployees,
-          presentToday,
-          absentToday,
-          leaveToday,
-        });
-      } catch (error) {
-        console.error('Error fetching stats:', error);
+        setStats({ totalEmployees, presentToday, absentToday, leaveToday });
+      } catch (err) {
+        console.error('Error fetching stats:', err);
         setError('Failed to load dashboard data.');
       } finally {
         setLoading(false);
@@ -97,6 +91,8 @@ export function Dashboard() {
       color: 'bg-amber-100 text-amber-600',
     },
   ];
+
+  const markedToday = stats.presentToday + stats.absentToday + stats.leaveToday;
 
   return (
     <div className="space-y-6">
@@ -147,13 +143,13 @@ export function Dashboard() {
             <span className="text-foreground font-semibold">
               {stats.totalEmployees > 0
                 ? `${Math.round((stats.presentToday / stats.totalEmployees) * 100)}%`
-                : '0'}
+                : '0%'}
             </span>
           </div>
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">Marked Attendance</span>
             <span className="text-foreground font-semibold">
-              {stats.presentToday + stats.absentToday + stats.leaveToday} / {stats.totalEmployees}
+              {markedToday} / {stats.totalEmployees}
             </span>
           </div>
         </div>

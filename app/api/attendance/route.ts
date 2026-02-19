@@ -68,11 +68,9 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    console.log('hi')
 
     // Normalize to array whether single or bulk
     const records = Array.isArray(body) ? body : [body];
-    console.log('records: ', records);
 
     const validStatuses = ['Present', 'Absent', 'Leave'];
     const results = [];
@@ -80,8 +78,6 @@ export async function POST(request: NextRequest) {
 
     for (const record of records) {
       const { employee_id, date, status, remarks } = record;
-
-      console.log('Processing record:', { employee_id, date, status, remarks }); // 👈 add this
 
       if (!employee_id || !date || !status) {
         errors.push({ employee_id, error: 'Missing required fields' });

@@ -29,9 +29,6 @@ export function Dashboard() {
 
         const today = new Date().toISOString().split('T')[0];
 
-        // Fetch in parallel:
-        // - employees with limit=1 just to get the total count
-        // - today's attendance with a high limit to get all records
         const [empResponse, attResponse] = await Promise.all([
           fetch('/api/employees?limit=1&offset=0'),
           fetch(`/api/attendance?fromDate=${today}&toDate=${today}&limit=1000&offset=0`),
@@ -98,7 +95,7 @@ export function Dashboard() {
     <div className="space-y-6">
       <div>
         <h2 className="text-3xl font-bold text-foreground">Dashboard</h2>
-        <p className="text-muted-foreground mt-1">Welcome to HRMS</p>
+        <p className="text-muted-foreground mt-1">Welcome to HRMS Lite</p>
       </div>
 
       {error && (

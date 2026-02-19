@@ -7,7 +7,7 @@ const _geist = Geist({ subsets: ["latin"] });
 const _geistMono = Geist_Mono({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: 'HRMS - Human Resource Management System',
+  title: 'HRMS Lite - Human Resource Management System',
   description: 'Professional HR management system for employee and attendance management',
   generator: 'v0.app',
   icons: {

@@ -15,10 +15,8 @@ export async function query(text: string, params?: any[]) {
   try {
     const result = await pool.query(text, params);
     const duration = Date.now() - start;
-    // console.log('[v0] Executed query:', { text, duration, rows: result.rowCount });
     return result;
   } catch (error) {
-    // console.error('[v0] Database error:', error);
     throw error;
   }
 }

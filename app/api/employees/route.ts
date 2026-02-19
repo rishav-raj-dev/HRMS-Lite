@@ -3,25 +3,37 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(request: NextRequest) {
   try {
-    const result = await query(
-      'SELECT id, name, email, position, department, hire_date, salary FROM employees ORDER BY name ASC'
-    );
-    return NextResponse.json({ employees: result.rows });
-  } catch (error: any) {
-    console.error('Error fetching employees:', error);
-    
-    // Check if it's a "table doesn't exist" error
-    if (error.code === '42P01') {
-      return NextResponse.json(
-        { error: '' },
-        { status: 503 }
-      );
+    const { searchParams } = new URL(request.url);
+    const search = searchParams.get('search') || '';
+    const limit = parseInt(searchParams.get('limit') || '10');
+    const offset = parseInt(searchParams.get('offset') || '0');
+
+    const params: any[] = [];
+    let whereSql = '';
+
+    if (search) {
+      params.push(`%${search}%`);
+      whereSql = `WHERE e.name ILIKE $1 OR e.position ILIKE $1 OR e.department ILIKE $1`;
     }
-    
-    return NextResponse.json(
-      { error: 'Failed to fetch employees' },
-      { status: 500 }
+
+    // Get total count
+    const countResult = await query(
+      `SELECT COUNT(*) FROM employees e ${whereSql}`,
+      params
     );
+    const total = parseInt(countResult.rows[0].count);
+
+    // Get paginated results
+    params.push(limit, offset);
+    const result = await query(
+      `SELECT * FROM employees e ${whereSql} ORDER BY name ASC LIMIT $${params.length - 1} OFFSET $${params.length}`,
+      params
+    );
+
+    return NextResponse.json({ employees: result.rows, total });
+  } catch (error) {
+    console.error('Error fetching employees:', error);
+    return NextResponse.json({ error: 'Failed to fetch employees' }, { status: 500 });
   }
 }
 

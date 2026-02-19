@@ -94,7 +94,7 @@ export function EmployeeList() {
       {error && (
         <Card className="p-4 bg-red-50 border-red-200">
           <p className="text-sm text-red-800">{error}</p>
-          <p className="text-xs text-red-600 mt-2">Please ensure the database is initialized. Visit /setup to initialize.</p>
+          {/* <p className="text-xs text-red-600 mt-2">Please ensure the database is initialized. Visit /setup to initialize.</p> */}
         </Card>
       )}
 
